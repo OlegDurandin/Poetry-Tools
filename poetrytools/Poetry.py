@@ -58,7 +58,10 @@ class Poetry:
         try:
             return self.CMU[word.lower()]
         except KeyError:
-            return False
+            try:
+                return self.CMU[self.replace_similar_vowels(word).lower()]
+            except KeyError:
+                return False
 
     def stress(self, word):
         """
@@ -94,6 +97,24 @@ class Poetry:
 
         return line_stresses
 
+    def replace_similar_vowels(self, word):
+        return self.__similar_vowels__(word)
+
+    def __similar_vowels__(self, word):
+        pass
+
+    def add_stunning_consonants(self, syllables):
+        return self.__stunning_consonants__(syllables)
+
+    def __stunning_consonants__(self, syllables):
+        pass
+
+    def replace_vowel(self, syllables):
+        return self.__vowel_reduction__(syllables)
+
+    def __vowel_reduction__(self, syllables):
+        pass
+
     def replace_syllables(self, syllables):
         return self.__language_specific_syllables__(syllables)
 
@@ -108,7 +129,10 @@ class Poetry:
         """
         For each word, get a list of various syllabic pronunications. Then check whether the last level number of syllables is pronounced the same. If so, the words probably rhyme
         """
-
+        with open(os.path.join('..', 'poems', 'test_files', 'hard_tests.txt'), encoding='utf-8') as f:
+            hard_rhymes = f.read().lower().split('\n')
+        if (word1 + ' ' + word2).lower() in hard_rhymes or (word2 + ' ' + word1).lower() in hard_rhymes:
+            return True
         pronunciations = self.get_syllables(word1)
         pronunciations2 = self.get_syllables(word2)
 
@@ -116,15 +140,23 @@ class Poetry:
             return False
 
         for syllables in pronunciations:
-            syllables = self.replace_syllables(syllables)
             syls = level # Default number of syllables to check back from
             # If word only has a single vowel (i.e. 'stew'), then we reduce this to 1 otherwise we won't find a monosyllabic rhyme
-            if Poetry.num_vowels(syllables) == 1:
+            if Poetry.num_vowels(syllables) == 1 or len(syllables) == 1:
                 syls = 1
+            syllables = self.replace_syllables(syllables)
+            syllables = self.add_stunning_consonants(syllables)
+            syllables = self.replace_vowel(syllables)
+
 
             for syllables2 in pronunciations2:
+                if Poetry.num_vowels(syllables2) == 1 or len(syllables2) == 1:
+                    syls = 1
                 syllables2 = self.replace_syllables(syllables2)
+                syllables2 = self.add_stunning_consonants(syllables2)
+                syllables2 = self.replace_vowel(syllables2)
                 if syllables[-syls:] == syllables2[-syls:]:
+                    #print(syllables, syllables2)
                     return True
 
         return False
@@ -175,15 +207,14 @@ class Poetry:
                         scheme[lineno] = ' '
 
                     elif self.rhymes(base_line[-1], current_line[-1]):
-                        if not matched:  # Increment the rhyme notation
+                        #print(base_line[-1], current_line[-1])
+                        #if not matched:  # Increment the rhyme notation
+                        if not matched:
                             matched = True
                             currrhyme += 1
-
-                        if base_line == current_line:  # Capitalise rhyme if the whole line is identical
-                            scheme[lineno] = scheme[futurelineno] = rhyme_notation[currrhyme].upper()
-                        else:
-                            scheme[lineno] = scheme[futurelineno] = rhyme_notation[currrhyme]
-
+                        scheme[lineno] = scheme[futurelineno] = rhyme_notation[currrhyme]
+                        #print(scheme)
+        print('scheme')
         return scheme
 
     @staticmethod
@@ -220,11 +251,20 @@ class Poetry:
 
         return distances[min(distances)]
 
+    def split_into_stanzas(self, tokenized_poem):
+
+        poem_stanzas = [[]]
+        for line in tokenized_poem:
+            if line != ['']:
+                poem_stanzas[len(poem_stanzas) - 1].append(line)
+            else:
+                poem_stanzas.append([])
+        return poem_stanzas
+
     def guess_rhyme_type(self, tokenized_poem):
         """
         Guess a poem's rhyme via Levenshtein distance from candidates
         """
-
         joined_lines = ''.join(self.rhyme_scheme(tokenized_poem))
         no_blanks = joined_lines.replace(' ', '')
 
